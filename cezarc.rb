@@ -6,10 +6,10 @@ def nextElement(hash, alpha)
 end
 
 def getDependencies(array, alpha)
-    dependencies = Hash.new()
+    dependencies = {}
     arr = array.map{|e| e.chars + [""]*(array.group_by(&:size).max.last[0].size - e.size)}
-    for word in arr.transpose()
-        for char in word.reject{ |c| c.empty? }
+    arr.transpose().each do |word|
+        word.reject{ |c| c.empty? }.each do |char|
             if not dependencies.has_value?(char)
                 if nextElement(dependencies,alpha)
                     dependencies[nextElement(dependencies, alpha)] = char
@@ -51,7 +51,7 @@ def main()
         ALPHABET.map {|e| h.has_key?(e) ? replacements.concat(h[e]) : replacements.concat(e)}
         puts replacements
     else
-        for i in 0..1000 #tries with 1000 different permutations of ALPHABET ... with more than 1000 gets slower
+        for i in 0..1000
             currentAlphabet = ALPHABET.shuffle
             if isSorted(result, currentAlphabet)
                 puts "Yes"
