@@ -1,18 +1,18 @@
 ALPHABET = ['a','b','c','d','e','f','g','h','i','j','k','l','m',
             'n','o','p','q','r','s','t','u','v','w','x','y','z']
 
-def nextElement(hash, alpha)
+def next_element(hash, alpha)
     (alpha - hash.keys)[0]
 end
 
-def getDependencies(array, alpha)
+def get_dependencies(array, alpha)
     dependencies = {}
     arr = array.map{|e| e.chars + [""]*(array.group_by(&:size).max.last[0].size - e.size)}
     arr.transpose().each do |word|
         word.reject{ |c| c.empty? }.each do |char|
             if not dependencies.has_value?(char)
-                if nextElement(dependencies,alpha)
-                    dependencies[nextElement(dependencies, alpha)] = char
+                if next_element(dependencies,alpha)
+                    dependencies[next_element(dependencies, alpha)] = char
                 else
                     false
                 end
@@ -22,8 +22,8 @@ def getDependencies(array, alpha)
     dependencies
 end
 
-def isSorted(array, alpha)
-    h = getDependencies(array, alpha)
+def is_sorted(array, alpha)
+    h = get_dependencies(array, alpha)
     if h 
         desired = []
         array.map{|e| desired.push(e.split("").
@@ -44,18 +44,18 @@ def main()
         result.push(word)
     end
 
-    if isSorted(result, ALPHABET)
+    if is_sorted(result, ALPHABET)
         puts "YES"
-        h = getDependencies(result, ALPHABET)
+        h = get_dependencies(result, ALPHABET)
         replacements = ''
         ALPHABET.map {|e| h.has_key?(e) ? replacements.concat(h[e]) : replacements.concat(e)}
         puts replacements
     else
         for i in 0..1000
             currentAlphabet = ALPHABET.shuffle
-            if isSorted(result, currentAlphabet)
+            if is_sorted(result, currentAlphabet)
                 puts "Yes"
-                h = getDependencies(result, currentAlphabet)
+                h = get_dependencies(result, currentAlphabet)
                 replacements = ''
                 currentAlphabet.map {|e| h.has_key?(e) ? 
                     replacements.concat(h[e]) : replacements.concat(e)}
