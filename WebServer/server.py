@@ -11,7 +11,7 @@ import os.path
 from copy import deepcopy
 
 class MySSLHTTPServer(TCPServer):
-    
+
     def server_bind(self):
         TCPServer.server_bind(self)
         host, port = self.socket.getsockname()[:2]
@@ -87,7 +87,7 @@ class MyHandler(BaseHTTPRequestHandler):
             values = [x[1] for x in names]
             # print(values)
 
-             if any(self.path.endswith(x) for x in [".html", ".txt", ".docs", "doc"]):
+            if any(self.path.endswith(x) for x in [".html", ".txt", ".docs", "doc"]):
                 f = open(curdir + sep + self.path) 
                 self.wfile.write(bytes(f.read(), 'utf-8'))
                 f.close()
