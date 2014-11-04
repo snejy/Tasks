@@ -58,6 +58,9 @@ class MyHandler(BaseHTTPRequestHandler):
                 wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
             return
 
+    def add(self, x, y):
+        return int(x) + int(y)
+
     def do_GET(self):
         try:
             parts = self.path.split("?")
@@ -68,6 +71,11 @@ class MyHandler(BaseHTTPRequestHandler):
                 arguments = parts[1].split("&")
                 names = list(map(lambda s: s.split("="), arguments))
                 values = [x[1] for x in names]
+
+            if self.path.startswith("/add") and len(values) > 1:
+                sumarize = self.add(values[0], values[1])
+                self.wfile.write(bytes(str(sumarize), 'utf-8'))
+                return
 
             self.handle_text_files(self.path, self.wfile)
             self.handle_images(self.path, self.wfile)
@@ -82,15 +90,18 @@ class MyHandler(BaseHTTPRequestHandler):
             arguments = []
             values = []
             ctype, pdict = cgi.parse_header(self.headers['Content-type'])
+
             if ctype == 'multipart/form-data':
                 content_type = self.headers['Content-type']
                 content_length = int(self.headers['Content-Length'])
-                qs = self.rfile.read(content_length)
+                content = self.rfile.read(content_length)
                 data_list = []
-                content_list = qs.decode("utf-8").split("\r\n\r\n")
+                content_list = content.decode("utf-8").split("\r\n\r\n")
+
                 for i in range(len(content_list) - 1):
                     data_list.append("")
                 data_list[0] += content_list[0].split("name=")[1].split(";")[0].replace('"','') + "="
+
                 for i,c in enumerate(content_list[1:-1]):
                     key = c.split("name=")[1].split(";")[0].replace('"','')
                     data_list[i+1] += key + "="
@@ -103,8 +114,8 @@ class MyHandler(BaseHTTPRequestHandler):
 
             elif ctype == 'application/x-www-form-urlencoded':
                 content_length = int(self.headers['Content-Length'])
-                qs = self.rfile.read(content_length)
-                arguments =  qs.decode("utf-8").split("&")
+                content = self.rfile.read(content_length)
+                arguments =  content.decode("utf-8").split("&")
                 names = list(map(lambda x: x.split("="), arguments))
                 values = [x[1] for x in names]
 
@@ -120,16 +131,16 @@ class MyHandler(BaseHTTPRequestHandler):
 def main():
     if len(sys.argv) > 2:
         PORT = int(sys.argv[2])
-        I = sys.argv[1]
+        IP = sys.argv[1]
     elif len(sys.argv) > 1:
         PORT = int(sys.argv[1])
-        I = ""
+        IP = ""
     else:
         PORT = 8080
-        I = ""
+        IP = ""
 
     try:
-        server = ForkingHTTPServer((I, PORT), MyHandler)
+        server = ForkingHTTPServer((IP, PORT), MyHandler)
         print('started httpserver...')
         server.serve_forever()
     except KeyboardInterrupt:
