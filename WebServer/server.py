@@ -75,9 +75,31 @@ class MyHandler(BaseHTTPRequestHandler):
     def do_POST(self):
 
         arguments = []
+        values = []
         ctype, pdict = cgi.parse_header(self.headers['Content-type'])
         if ctype == 'multipart/form-data':
-            postvars = cgi.parse_multipart(self.rfile, pdict)
+            content_type = self.headers['Content-type']
+            content_length = int(self.headers['Content-Length'])
+
+            qs = self.rfile.read(content_length)
+            data_list = []
+            content_list = qs.decode("utf-8").split("\r\n\r\n")
+            for i in range(len(content_list) - 1):
+                data_list.append("")
+
+            data_list[0] += content_list[0].split("name=")[1].split(";")[0].replace('"','') + "="
+
+            for i,c in enumerate(content_list[1:-1]):
+                key = c.split("name=")[1].split(";")[0].replace('"','')
+                data_list[i+1] += key + "="
+                value = c.split("\r\n")
+                data_list[i] += value[0]
+
+            data_list[-1] += content_list[-1].split("\r\n")[0]
+            arguments = data_list
+            names = list(map(lambda x: x.split("="), data_list))
+            values = [x[1] for x in names]
+
 
         elif ctype == 'application/x-www-form-urlencoded':
             content_length = int(self.headers['Content-Length'])
@@ -85,36 +107,33 @@ class MyHandler(BaseHTTPRequestHandler):
             arguments =  qs.decode("utf-8").split("&")
             names = list(map(lambda x: x.split("="), arguments))
             values = [x[1] for x in names]
-            # print(values)
 
-            if any(self.path.endswith(x) for x in [".html", ".txt", ".docs", "doc"]):
-                f = open(curdir + sep + self.path) 
-                self.wfile.write(bytes(f.read(), 'utf-8'))
-                f.close()
-                return
+        if any(self.path.endswith(x) for x in [".html", ".txt", ".docs", "doc"]):
+            f = open(curdir + sep + self.path) 
+            self.wfile.write(bytes(f.read(), 'utf-8'))
+            f.close()
+            return
 
 
-            if any(self.path.endswith(x) for x in [".py",".pl",".rb",".exe",".sh"]):
-                binds = {".py" : "python3", ".pl" : "perl", ".rb" : "ruby", ".exe" : "exec", ".sh" : "bash"}
+        if any(self.path.endswith(x) for x in [".py",".pl",".rb",".exe",".sh"]):
+            binds = {".py" : "python3", ".pl" : "perl", ".rb" : "ruby", ".exe" : "exec", ".sh" : "bash"}
 
-                if len(arguments) == 0: 
-                    p = subprocess.Popen(binds["." + self.path.split('.', 2)[-1]] + " " + os.getcwd() + self.path,
-                                               shell=True,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.STDOUT)
+            if len(values) == 0:
+                p = subprocess.Popen(binds["." + self.path.split('.', 2)[-1]] + " " + os.getcwd() + self.path,
+                                           shell=True,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.STDOUT)
 
-                else:
-                    names = list(map(lambda s: s.split("="), arguments))
-                    values = [x[1] for x in names]
-                    p = subprocess.Popen(binds["." + self.path.split('.', 2)[-1]] + " " + os.getcwd() + self.path +  " "  + " ".join(values),
-                                               shell=True,
-                                               stdout=subprocess.PIPE,
-                                               stderr=subprocess.STDOUT)
+            else:
+                p = subprocess.Popen(binds["." + self.path.split('.', 2)[-1]] + " " + os.getcwd() + self.path +  " "  + " ".join(values),
+                                           shell=True,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.STDOUT)
 
-                for line in p.stdout.readlines():
-                    print(line)
-                    self.wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
-                return
+            for line in p.stdout.readlines():
+                print(line)
+                self.wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
+            return
 
 
 def main():
