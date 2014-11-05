@@ -10,6 +10,7 @@ import base64
 import os.path
 import threading
 from copy import deepcopy
+import logging
 
 
 class ForkingHTTPServer(ForkingMixIn, TCPServer):
@@ -20,13 +21,29 @@ class ForkingHTTPServer(ForkingMixIn, TCPServer):
         self.server_name = socket.getfqdn(host)
         self.server_port = port
 
+    
 
 class MyHandler(BaseHTTPRequestHandler):
+
+    FORMAT = '%(asctime)-15s %(message)s'
+    logging.basicConfig(filename='./logs/log.txt')
+    request_logger = logging.getLogger('request logger')
+    request_logger.setLevel(logging.DEBUG)    
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
+    def log_message(self, format, *args):
+        self.request_logger.info("%s - - [%s] %s\n" %
+                         (self.client_address[0],
+                          self.log_date_time_string(),
+                          format%args))
+        super(MyHandler, self).log_message(format, *args)
 
     def handle_text_files(self, path, wfile):
         if any(path.endswith(x) for x in [".html", ".txt", ".docs", ".doc"]):
             f = open(curdir + sep + path) 
             wfile.write(bytes(f.read(), 'utf-8'))
+            self.send_response(200)
             f.close()
             return
 
@@ -35,6 +52,7 @@ class MyHandler(BaseHTTPRequestHandler):
             path_to_image = os.getcwd() + path
             with open(path_to_image, 'rb') as image:
                 wfile.write(image.read())
+            self.send_response(200)
             return
 
     def handle_scripts(self, path, wfile, values = []):
@@ -56,6 +74,7 @@ class MyHandler(BaseHTTPRequestHandler):
             for line in p.stdout.readlines():
                 print(line)
                 wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
+            self.send_response(200)
             return
 
     def add(self, x, y):
@@ -71,10 +90,14 @@ class MyHandler(BaseHTTPRequestHandler):
                 arguments = parts[1].split("&")
                 names = list(map(lambda s: s.split("="), arguments))
                 values = [x[1] for x in names]
+            if self.path.startswith("/test"):
+                self.send_response(200)
+                return
 
             if self.path.startswith("/add") and len(values) > 1:
                 sumarize = self.add(values[0], values[1])
                 self.wfile.write(bytes(str(sumarize), 'utf-8'))
+                self.send_response(200)
                 return
 
             self.handle_text_files(self.path, self.wfile)
@@ -119,7 +142,6 @@ class MyHandler(BaseHTTPRequestHandler):
                 names = list(map(lambda x: x.split("="), arguments))
                 values = [x[1] for x in names]
 
-           
             self.handle_text_files(self.path, self.wfile)
             self.handle_scripts(self.path, self.wfile, values)
             return
