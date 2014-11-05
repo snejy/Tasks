@@ -15,18 +15,33 @@ import logging
 
 class ForkingHTTPServer(ForkingMixIn, TCPServer):
 
+    logging.basicConfig(filename='./logs/serverlog.txt')
+    server_logger = logging.getLogger('server request/response logger')
+    server_logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
     def server_bind(self):
         TCPServer.server_bind(self)
         host, port = self.socket.getsockname()[:2]
         self.server_name = socket.getfqdn(host)
         self.server_port = port
+        self.server_logger.info("Server {} started at port {}".format(self.server_name, self.server_port))
 
-    
+    def logger(self):
+        try:
+            request, client_address = super(ForkingHTTPServer, self).get_request()
+            self.server_logger.info("logging request: {} from client_address: {}".format(request,client_address))
+        except Exception as e:
+            self.server_logger.warning("logging Exception: ".format(e))
+        return
+
+    def serve_forever(self):
+        self.logger()
+        super(ForkingHTTPServer, self).serve_forever()
 
 class MyHandler(BaseHTTPRequestHandler):
 
-    FORMAT = '%(asctime)-15s %(message)s'
-    logging.basicConfig(filename='./logs/log.txt')
     request_logger = logging.getLogger('request logger')
     request_logger.setLevel(logging.DEBUG)    
     ch = logging.StreamHandler()
@@ -41,6 +56,9 @@ class MyHandler(BaseHTTPRequestHandler):
 
     def handle_text_files(self, path, wfile):
         if any(path.endswith(x) for x in [".html", ".txt", ".docs", ".doc"]):
+            if not os.path.isfile(path[1:]):
+                super(MyHandler, self).send_error(404,'File Not Found: %s' % path)
+                return
             f = open(curdir + sep + path) 
             wfile.write(bytes(f.read(), 'utf-8'))
             self.send_response(200)
@@ -49,6 +67,9 @@ class MyHandler(BaseHTTPRequestHandler):
 
     def handle_images(self, path, wfile):
         if any(path.endswith(x) for x in [".jpeg", ".jpg", ".png"]):
+            if not os.path.isfile(path[1:]):
+                super(MyHandler, self).send_error(404,'File Not Found: %s' % path)
+                return
             path_to_image = os.getcwd() + path
             with open(path_to_image, 'rb') as image:
                 wfile.write(image.read())
@@ -58,6 +79,10 @@ class MyHandler(BaseHTTPRequestHandler):
     def handle_scripts(self, path, wfile, values = []):
         if any(path.endswith(x) for x in [".py",".pl",".rb",".exe",".sh"]):
             binds = {".py" : "python3", ".pl" : "perl", ".rb" : "ruby", ".exe" : "exec", ".sh" : "bash"}
+
+            if not os.path.isfile(path[1:]):
+                super(MyHandler, self).send_error(404,'File Not Found: %s' % path)
+                return
 
             if len(values) == 0: 
                 p = subprocess.Popen(binds["." + path.split('.', 2)[-1]] + " " + os.getcwd() + path,
@@ -76,6 +101,10 @@ class MyHandler(BaseHTTPRequestHandler):
                 wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
             self.send_response(200)
             return
+
+    def handle_other(self, path):
+        if not os.path.isfile(path[1:]):
+            super(MyHandler, self).send_error(404,'File Not Found: %s' % path)
 
     def add(self, x, y):
         return int(x) + int(y)
@@ -103,6 +132,7 @@ class MyHandler(BaseHTTPRequestHandler):
             self.handle_text_files(self.path, self.wfile)
             self.handle_images(self.path, self.wfile)
             self.handle_scripts(self.path, self.wfile, values)
+            self.handle_other(self.path)
             return
 
         except IOError:
