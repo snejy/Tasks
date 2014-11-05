@@ -1,8 +1,8 @@
 import logging
+import os
 
 
 class Logger():
-
 
     def __init__(self, logfilename, logger_name):
         self.logfile = logfilename
@@ -11,10 +11,16 @@ class Logger():
     def log(self, arguments, level = "info", format_with = '%(asctime)s %(message)s'):
 
         self.logger = logging.getLogger(self.logger_name)
+
+        if not os.path.isfile(self.logfile):
+            self.logfile = open(self.logfile, 'w').close()
+
         logging.basicConfig(filename = self.logfile, format = format_with)
 
         if type(arguments) == list:
-            arguments = "  ".join(arguments)
+            arguments = ("  ").join(arguments)
+            print(arguments)
+            print(type(arguments))
 
         if level == "warning":
             self.logger.setLevel(logging.WARNING)
@@ -31,7 +37,3 @@ class Logger():
         else:
             self.logger.setLevel(logging.INFO)
             self.logger.info(arguments)
-
-
-if __name__ == '__main__':
-    pass
