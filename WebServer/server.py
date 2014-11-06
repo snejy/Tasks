@@ -11,44 +11,38 @@ import os.path
 import threading
 from copy import deepcopy
 import logging
-
+from logger import Logger
 
 class ForkingHTTPServer(ForkingMixIn, TCPServer):
 
-    logging.basicConfig(filename='./logs/serverlog.txt')
-    server_logger = logging.getLogger('server request/response logger')
-    server_logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    def __init__(self, server_address, request_handler, logger):
+        self.logger = logger
+        super(ForkingHTTPServer, self).__init__(server_address, request_handler)
 
     def server_bind(self):
         TCPServer.server_bind(self)
         host, port = self.socket.getsockname()[:2]
         self.server_name = socket.getfqdn(host)
         self.server_port = port
-        self.server_logger.info("Server {} started at port {}".format(self.server_name, self.server_port))
+        self.logger.log([str(self.server_name), "started on", str(self.server_port)])
 
-    def logger(self):
+    def get_request(self):
         try:
             request, client_address = super(ForkingHTTPServer, self).get_request()
-            self.server_logger.info("logging request: {} from client_address: {}".format(request,client_address))
+            self.logger.log([str(request), str(client_address)])
         except Exception as e:
-            self.server_logger.warning("logging Exception: ".format(e))
-        return
+            self.logger.log(str(e))
+        return super(ForkingHTTPServer, self).get_request()
 
     def serve_forever(self):
-        self.logger()
         super(ForkingHTTPServer, self).serve_forever()
 
 class MyHandler(BaseHTTPRequestHandler):
 
-    request_logger = logging.getLogger('request logger')
-    request_logger.setLevel(logging.DEBUG)    
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    handler_logger = Logger('handlerlog.log', "handler logger")
 
     def log_message(self, format, *args):
-        self.request_logger.info("%s - - [%s] %s\n" %
+        self.handler_logger.log("%s - - [%s] %s\n" %
                          (self.client_address[0],
                           self.log_date_time_string(),
                           format%args))
@@ -192,7 +186,9 @@ def main():
         IP = ""
 
     try:
-        server = ForkingHTTPServer((IP, PORT), MyHandler)
+        logger = Logger('serverlog.log', "server logger")
+        server = ForkingHTTPServer((IP, PORT), MyHandler, logger)
+        print(ForkingHTTPServer.mro())
         print('started httpserver...')
         server.serve_forever()
     except KeyboardInterrupt:
