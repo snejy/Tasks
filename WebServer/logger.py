@@ -19,8 +19,6 @@ class Logger():
 
         if type(arguments) == list:
             arguments = ("  ").join(arguments)
-            print(arguments)
-            print(type(arguments))
 
         if level == "warning":
             self.logger.setLevel(logging.WARNING)
