@@ -13,6 +13,7 @@ from copy import deepcopy
 import logging
 from logger import Logger
 
+
 class ForkingHTTPServer(ForkingMixIn, TCPServer):
 
     def __init__(self, server_address, request_handler, logger):
@@ -39,10 +40,12 @@ class ForkingHTTPServer(ForkingMixIn, TCPServer):
 
 class MyHandler(BaseHTTPRequestHandler):
 
-    handler_logger = Logger('handlerlog.log', "handler logger")
+    def __init__(self, request, client_address, server):
+        self.logger = server.logger 
+        super(MyHandler, self).__init__(request, client_address, server)
 
     def log_message(self, format, *args):
-        self.handler_logger.log("%s - - [%s] %s\n" %
+        self.logger.log("%s - - [%s] %s\n" %
                          (self.client_address[0],
                           self.log_date_time_string(),
                           format%args))
@@ -91,7 +94,7 @@ class MyHandler(BaseHTTPRequestHandler):
                                            stderr=subprocess.STDOUT)
 
             for line in p.stdout.readlines():
-                print(line)
+                # print(line)
                 wfile.write(bytes(str(line)[2:len(line)+1], 'utf-8'))
             self.send_response(200)
             return
